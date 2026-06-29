@@ -12,20 +12,35 @@ const WC_END   = '20260719';
 
 // ─── Round detection ──────────────────────────────────────────────────────────
 
-function detectRound(eventName: string, notes: string[]): TournamentRound {
-  const text = [eventName, ...notes].join(' ').toLowerCase();
+// ESPN season slugs observed in 2026 World Cup API responses
+const SEASON_SLUG_MAP: Record<string, TournamentRound> = {
+  'group-stage':   'group',
+  'round-of-32':   'round_of_32',
+  'round-of-16':   'round_of_16',
+  'quarterfinals': 'quarterfinal',
+  'quarter-finals':'quarterfinal',
+  'semifinals':    'semifinal',
+  'semi-finals':   'semifinal',
+  'third-place':   'third_place',
+  'third-place-match': 'third_place',
+  'final':         'final',
+};
 
+function detectRound(seasonSlug: string, eventName: string, notes: string[]): TournamentRound {
+  // Primary: use ESPN's season slug (reliable, observed in API)
+  const slugKey = seasonSlug.toLowerCase();
+  if (SEASON_SLUG_MAP[slugKey]) return SEASON_SLUG_MAP[slugKey];
+
+  // Fallback: text-based detection from name/notes
+  const text = [eventName, ...notes].join(' ').toLowerCase();
   if (text.includes('final') && !text.includes('semi') && !text.includes('quarter') && !text.includes('third')) {
     return 'final';
   }
   if (text.includes('third') || text.includes('3rd')) return 'third_place';
   if (text.includes('semi'))                            return 'semifinal';
   if (text.includes('quarter'))                         return 'quarterfinal';
-  if (text.includes('round of 16') || text.includes('last 16') || text.includes('r16')) return 'round_of_16';
-  if (
-    text.includes('round of 32') || text.includes('last 32') || text.includes('r32') ||
-    text.includes('knockout round') || text.includes('round of 32')
-  ) return 'round_of_32';
+  if (text.includes('round of 16') || text.includes('last 16')) return 'round_of_16';
+  if (text.includes('round of 32') || text.includes('last 32')) return 'round_of_32';
 
   return 'group';
 }
@@ -52,6 +67,7 @@ interface ScoreboardResponse {
     id: string;
     name: string;
     date: string;
+    season?: { type?: number; slug?: string };
     status: { type: { completed: boolean; description: string } };
     competitions: Array<{
       competitors: Array<{
@@ -180,7 +196,8 @@ export async function fetchAllMatches(): Promise<ESPNMatchDetail[]> {
         const completed = event.status?.type?.completed ?? false;
 
         const notes = (comp.notes ?? []).map(n => n.headline ?? '');
-        const round = detectRound(event.name, notes);
+        const seasonSlug = event.season?.slug ?? '';
+        const round = detectRound(seasonSlug, event.name, notes);
 
         let homeYellowCards = 0;
         let homeRedCards = 0;

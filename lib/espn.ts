@@ -68,7 +68,7 @@ interface ScoreboardResponse {
     name: string;
     date: string;
     season?: { type?: number; slug?: string };
-    status: { type: { completed: boolean; description: string } };
+    status: { type: { completed: boolean; description: string; name?: string } };
     competitions: Array<{
       competitors: Array<{
         homeAway: string;
@@ -195,6 +195,14 @@ export async function fetchAllMatches(): Promise<ESPNMatchDetail[]> {
         const awayScore = parseInt(awayComp.score ?? '0', 10) || 0;
         const completed = event.status?.type?.completed ?? false;
 
+        // Detect penalty shootout winner (STATUS_FINAL_PEN)
+        const isPenalties = event.status?.type?.name === 'STATUS_FINAL_PEN';
+        let penaltyWinner: 'home' | 'away' | null = null;
+        if (isPenalties) {
+          if (homeComp.winner === true) penaltyWinner = 'home';
+          else if (awayComp.winner === true) penaltyWinner = 'away';
+        }
+
         const notes = (comp.notes ?? []).map(n => n.headline ?? '');
         const seasonSlug = event.season?.slug ?? '';
         const round = detectRound(seasonSlug, event.name, notes);
@@ -225,6 +233,7 @@ export async function fetchAllMatches(): Promise<ESPNMatchDetail[]> {
           round,
           date: event.date,
           completed,
+          penaltyWinner,
         } as ESPNMatchDetail;
       }),
     );

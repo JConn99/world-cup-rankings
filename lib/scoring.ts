@@ -170,7 +170,11 @@ export function calculatePlayerScores(
         const opponent = isHome ? match.awayTeam : match.homeTeam;
 
         let result: MatchResult;
-        if (goalsScored > goalsConceded) result = 'win';
+        if (match.penaltyWinner) {
+          // Penalty shootout: use ESPN's winner flag, ignore tied scoreline
+          const teamSide = isHome ? 'home' : 'away';
+          result = match.penaltyWinner === teamSide ? 'win' : 'loss';
+        } else if (goalsScored > goalsConceded) result = 'win';
         else if (goalsScored < goalsConceded) result = 'loss';
         else result = 'draw';
 

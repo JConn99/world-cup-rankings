@@ -156,4 +156,6 @@ export interface ESPNMatchDetail {
   round: TournamentRound;
   date: string;
   completed: boolean;
+  // Set when match was decided by penalty shootout; overrides score-based win/draw/loss
+  penaltyWinner: 'home' | 'away' | null;
 }
